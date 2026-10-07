@@ -1,9 +1,9 @@
 {
   "type": "object",
   "properties": {
-    "hour": { "type": "integer", "description": "Час срабатывания будильника (0-23)." },
-    "minute": { "type": "integer", "description": "Минуты срабатывания будильника (0-59)." },
-    "message": { "type": "string", "description": "Текстовое сообщение или название задачи." }
+    "hour": { "type": "integer", "description": "Alarm trigger hour (0-23)." },
+    "minute": { "type": "integer", "description": "Alarm trigger minute (0-59)." },
+    "message": { "type": "string", "description": "Text message or task name." }
   },
   "required": ["hour", "minute"]
 }
