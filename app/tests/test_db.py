@@ -1,4 +1,4 @@
-"""Схема, начальные данные и права ролей."""
+"""Schema, initial data, and role permissions."""
 
 import psycopg
 import pytest
