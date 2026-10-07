@@ -1,115 +1,96 @@
-# Задание: статический сайт GEO-аудита
+Task: static GEO-audit website
+ 
+Place this file in the repository root and give Claude Code the command:
+"Read TASK_site.md and GEO-audit-dark-factory_project-brief.md, ask clarifying questions one at a time, then proceed." 
+ 
+1. Context
+ 
+The service measures how often AI assistants (Perplexity, ChatGPT, etc.) mention Wildberries sellers' brands in answers to buyers. The business operates as a dark factory: no people on the line, everything automatic. Details — in GEO-audit-dark-factory_project-brief.md.
+ 
+The website is needed for three purposes:
+1. Publish the offer and the personal data processing policy (requirements of the law and the payment service).
+2. Publish weekly "whom AI recommends" ratings by category — so they are found and cited by AI with web search.
+3. Drive visitors to the Telegram bot (no sales on the site). 
+The site is maintained without people: it is assembled automatically from data after each weekly measurement.
+ 
+2. Main requirement: the site must be readable by AI
+ 
+Many AI crawlers do not execute JavaScript. Therefore:
+• All content — in ready HTML, assembled on the server. No client-side rendering.
+• No React, Vue, Framer Motion, or frontend bundlers.
+• Animations — CSS only, on top of ready content; respect prefers-reduced-motion.
+• Check: the page with JavaScript disabled contains all text and all tables. 
+3. Stack
+• Python 3.12, Jinja2 — static page generator.
+• Output: site/dist/ folder with ready HTML/CSS.
+• Serving: Caddy container in Docker Compose (automatic HTTPS, domain from the SITE_DOMAIN environment variable).
+• No external CDNs, Google fonts, counters, or trackers: everything of our own, from the same server. Font — system stack or one font hosted locally. 
+4. Pages
+Address Content
+/ What the service does, how AI "sees" brands, an example rating, button to the Telegram bot
+/ratings/ List of categories with ratings
+/ratings/<marketplace>/<category>/ Current category rating
+/ratings/<marketplace>/<category>/<YYYY-Wnn>/ Week archive — the address is permanent, never changes
+/method/ Methodology: query types, models, 3 runs, share formula, versions
+/pricing/ Tariffs (from data, do not hardcode)
+/offer/ and /privacy/ Stubs marked "DRAFT — to be replaced by the digital lawyer's document". Do not compose legal text
+/contacts/ Full name and INN of the self-employed person are substituted from settings, not stored in code
 
-Положи этот файл в корень репозитория и дай Claude Code команду:
-«Прочитай TASK_site.md и GEO-audit-dark-factory_project-brief.md, задай уточняющие вопросы по одному, затем выполняй».
-
----
-
-## 1. Контекст
-
-Сервис измеряет, как часто ИИ-ассистенты (Perplexity, ChatGPT и др.) упоминают бренды селлеров Wildberries в ответах покупателям. Бизнес работает как dark factory: без людей на линии, всё автоматически. Подробности — в `GEO-audit-dark-factory_project-brief.md`.
-
-Сайт нужен для трёх целей:
-1. Опубликовать оферту и политику обработки ПДн (требования закона и платёжного сервиса).
-2. Публиковать еженедельные рейтинги «кого рекомендует ИИ» по категориям — чтобы их находили и цитировали ИИ с веб-поиском.
-3. Вести посетителей в Telegram-бота (продаж на сайте нет).
-
-Сайт обслуживается без людей: собирается автоматически из данных после каждого еженедельного замера.
-
-## 2. Главное требование: сайт должен читаться ИИ
-
-Многие ИИ-краулеры не выполняют JavaScript. Поэтому:
-- Весь контент — в готовом HTML, собранном на сервере. Никакого рендеринга на клиенте.
-- Без React, Vue, Framer Motion и сборщиков фронтенда.
-- Анимации — только CSS, поверх готового контента; учитывать `prefers-reduced-motion`.
-- Проверка: страница с отключённым JavaScript содержит весь текст и все таблицы.
-
-## 3. Стек
-
-- Python 3.12, Jinja2 — генератор статических страниц.
-- Выход: папка `site/dist/` с готовым HTML/CSS.
-- Раздача: контейнер Caddy в Docker Compose (автоматический HTTPS, домен из переменной окружения `SITE_DOMAIN`).
-- Никаких внешних CDN, шрифтов Google, счётчиков и трекеров: всё своё, с того же сервера. Шрифт — системный стек или один шрифт, размещённый локально.
-
-## 4. Страницы
-
-| Адрес | Содержание |
-|---|---|
-| `/` | Что делает сервис, как ИИ «видит» бренды, пример рейтинга, кнопка в Telegram-бота |
-| `/ratings/` | Список категорий с рейтингами |
-| `/ratings/<площадка>/<категория>/` | Текущий рейтинг категории |
-| `/ratings/<площадка>/<категория>/<ГГГГ-Wнн>/` | Архив недели — адрес вечный, не меняется никогда |
-| `/method/` | Методология: типы запросов, модели, 3 прогона, формула доли, версии |
-| `/pricing/` | Тарифы (из данных, не вписывать вручную) |
-| `/offer/` и `/privacy/` | Заглушки с пометкой «ЧЕРНОВИК — заменяется документом цифрового юриста». Юридический текст не сочинять |
-| `/contacts/` | ФИО и ИНН самозанятого подставляются из настроек, в коде не хранятся |
-
-Структура страницы рейтинга (ответ сначала):
-1. Заголовок `h1` с категорией и неделей.
-2. Короткий вывод в 2–3 предложениях: лидеры и изменения за неделю.
-3. Таблица `<table>`: место, бренд, доля в ответах ИИ, изменение.
-4. Дата замера и ссылка на методологию.
-
-## 5. GEO и SEO
-
-- Разметка schema.org в JSON-LD: `Organization`, `WebSite`; для рейтинга — `Dataset` (с `dateModified`, `variableMeasured`) и `ItemList`; для методологии — `FAQPage`.
-- `robots.txt`: разрешить поисковых и ИИ-краулеров (YandexBot, Googlebot, PerplexityBot, OAI-SearchBot, GPTBot, ClaudeBot).
-- `sitemap.xml` с `lastmod`, `canonical` на каждой странице, файл `llms.txt` с кратким описанием сайта и ссылками на рейтинги.
-- Семантическая вёрстка, быстрая загрузка, mobile-first, светлая и тёмная тема.
-
-## 6. Данные
-
-Сейчас базы нет, поэтому генератор читает JSON из `site/data/`. Формат должен совпадать с будущей выгрузкой из PostgreSQL (схема `schema_v0_1.sql`, таблицы `core.scores`, `billing.tariffs`), чтобы потом заменить источник без переделки шаблонов.
-
-Пример `site/data/ratings/wb/palatki/2026-W39.json`:
-
-```json
+ 
+Rating page structure (answer first):
+1. h1 heading with category and week.
+2. Short conclusion in 2–3 sentences: leaders and changes over the week.
+3. <table>: rank, brand, share in AI answers, change.
+4. Measurement date and link to methodology. 
+5. GEO and SEO
+• schema.org markup in JSON-LD: Organization, WebSite; for a rating — Dataset (with dateModified, variableMeasured) and ItemList; for methodology — FAQPage.
+• robots.txt: allow search and AI crawlers (YandexBot, Googlebot, PerplexityBot, OAI-SearchBot, GPTBot, ClaudeBot).
+• sitemap.xml with lastmod, canonical on every page, an llms.txt file with a brief description of the site and links to ratings.
+• Semantic markup, fast loading, mobile-first, light and dark theme. 
+6. Data
+ 
+There is no database yet, so the generator reads JSON from site/data/. The format must match the future PostgreSQL export (schema schema_v0_1.sql, tables core.scores, billing.tariffs), so that later the source can be swapped without reworking templates.
+ 
+Example site/data/ratings/wb/palatki/2026-W39.json:
 {
-  "category": {"marketplace": "wb", "slug": "palatki", "name": "Туристические палатки"},
+  "category": {"marketplace": "wb", "slug": "palatki", "name": "Tourist tents"},
   "week": "2026-W39",
   "measured_at": "2026-09-21",
   "method": {"queries": 40, "models": ["sonar"], "runs": 3, "formula_version": "1.0"},
   "brands": [
-    {"rank": 1, "brand": "Тестбренд А", "share": 0.31, "change": 0.02}
+    {"rank": 1, "brand": "Testbrand A", "share": 0.31, "change": 0.02}
   ]
 }
-```
-
-Важно:
-- **В тестовых данных только вымышленные бренды.** Публиковать выдуманные рейтинги реальных брендов нельзя.
-- **Никаких персональных данных:** только бренды, без имён и названий продавцов-ИП.
-
-## 7. Проверки (сайт выкатывается автоматически, поэтому сборка падает при любой ошибке)
-
-Тесты на pytest:
-- все страницы собираются, HTML валиден;
-- JSON-LD на каждой странице парсится;
-- весь текст рейтинга присутствует в сыром HTML (без выполнения JS);
-- в HTML нет ссылок на внешние ресурсы;
-- нет шаблонов персональных данных (например, «ИП » с ФИО);
-- у архивных страниц адреса не изменились по сравнению с прошлой сборкой.
-
-## 8. Структура репозитория
-
-```
+ 
+Important:
+• Test data must contain only fictional brands. Publishing invented ratings of real brands is forbidden.
+• No personal data: only brands, without names or titles of seller-sole proprietors. 
+7. Checks (the site is deployed automatically, so the build fails on any error)
+ 
+Tests on pytest:
+• all pages build, HTML is valid;
+• JSON-LD on every page parses;
+• all rating text is present in the raw HTML (without JavaScript execution);
+• there are no links to external resources in the HTML;
+• there are no personal data patterns (e.g., "ИП " with a full name);
+• archived pages' addresses have not changed compared to the previous build. 
+8. Repository structure
 site/
-  generator/     # сборка страниц
+  generator/     # page assembly
   templates/     # Jinja2
-  static/        # CSS, шрифт, иконки
-  data/          # JSON (позже — выгрузка из базы)
+  static/        # CSS, font, icons
+  data/          # JSON (later — export from the database)
   tests/
-  dist/          # результат, в git не хранится
+  dist/          # result, not stored in git
 Caddyfile
 docker-compose.site.yml
 Makefile         # make build, make test, make serve
-```
-
-## 9. Не входит в задачу
-
-Юридические тексты, реальные данные, приём платежей, покупка домена, выкладка на сервер (сервер ещё не заказан).
-
-## 10. Результат
-
-- Рабочий генератор: `make build` собирает сайт из тестовых данных, `make test` проходит, `make serve` показывает сайт локально.
-- Короткий README: как добавить неделю рейтинга и как будет подключена база.
-- Работать небольшими коммитами. Если решение не очевидно — спросить, а не угадывать.
+ 
+9. Out of scope
+ 
+Legal texts, real data, payment acceptance, domain purchase, deployment to the server (the server has not been ordered yet).
+ 
+10. Deliverable
+• A working generator: make build assembles the site from test data, make test passes, make serve shows the site locally.
+• A short README: how to add a rating week and how the database will be connected.
+• Work in small commits. If a decision is not obvious — ask, do not guess.
