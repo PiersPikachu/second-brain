@@ -1,64 +1,63 @@
-# Линия: база, бот, воркеры
+Line: database, bot, workers
 
-`docker-compose.yml` в корне поднимает одной командой:
+docker-compose.yml in the root brings up with a single command:
 
-| Сервис | Что делает | Роль в базе |
-|---|---|---|
-| `db` | PostgreSQL 16, схема `schema_v0_1.sql`, справочники `db/02-seed.sql` | `postgres` |
-| `bot` | Telegram-бот, цех 3 (воронка). Пока заглушка: проверяет токен и доступ к `pd` | `bot_role` — единственная с доступом к `pd` |
-| `worker-leads`, `worker-mini-audit`, `worker-sales`, `worker-monitoring`, `worker-retention` | цеха 1, 2, 4, 5, 6 | `worker_role` — без доступа к `pd` |
+Service What it does Database role
+db PostgreSQL 16, schema schema_v0_1.sql, reference data db/02-seed.sql postgres
+bot Telegram bot, shop 3 (funnel). Currently a stub: checks the token and access to pd bot_role — the only one with access to pd
+worker-leads, worker-mini-audit, worker-sales, worker-monitoring, worker-retention shops 1, 2, 4, 5, 6 worker_role — without access to pd
 
-Сайт поднимается отдельно: `docker-compose.site.yml`.
+The website is brought up separately: docker-compose.site.yml.
 
-## Запуск на сервере
+Running on the server
 
 ```sh
-cp .env.example .env && chmod 600 .env   # заполнить пароли, токен бота, ключ AITUNNEL
+cp .env.example .env && chmod 600 .env   # fill in passwords, bot token, AITUNNEL key
 docker compose up -d --build
-docker compose ps                        # все сервисы должны быть healthy
+docker compose ps                        # all services must be healthy
 ```
 
-База доступна только контейнерам, порт наружу не публикуется. Консоль:
-`docker compose exec db psql -U postgres factory`.
+The database is accessible only to containers; the port is not published externally. Console:
+docker compose exec db psql -U postgres factory.
 
-**Инициализация выполняется один раз**, на пустом томе `pgdata`: схема, справочники, роли.
-Если она не дошла до конца, база остаётся `unhealthy`, и бот с воркерами не запускаются.
-На новом сервере, где данных ещё нет, исправьте причину и начните заново:
-`docker compose down -v && docker compose up -d`. **`-v` удаляет все данные** — на работающей
-линии так делать нельзя. Изменения схемы после запуска — миграциями (пока не сделаны).
+Initialization runs once, on an empty pgdata volume: schema, reference data, roles.
+If it did not complete, the database stays unhealthy, and the bot and workers do not start.
+On a new server where there is no data yet, fix the cause and start over:
+docker compose down -v && docker compose up -d. -v deletes all data — on a running
+line this must not be done. Schema changes after startup — via migrations (not yet implemented).
 
-## Как устроен воркер
+How the worker is structured
 
-`python -m factory.worker --workshop <код цеха>` берёт карточки из буферов своего цеха
-(`line.buffers.workshop_id`) и для каждой вызывает обработчик из `factory/handlers.py`:
+python -m factory.worker --workshop <shop code> takes cards from its shop's buffers
+(line.buffers.workshop_id) and for each calls the handler from factory/handlers.py:
 
-1. `claim` — карточка становится `in_progress` (`FOR UPDATE SKIP LOCKED`, короткая транзакция);
-2. обработчик работает вне транзакции и возвращает `Result` с карточками для следующих буферов;
-3. `complete` в одной транзакции создаёт эти карточки и отмечает `done`. Если следующий буфер
-   полон (триггер лимита N), карточка возвращается в очередь через минуту, попытка не тратится.
+1. claim — the card becomes in_progress (FOR UPDATE SKIP LOCKED, short transaction);
+2. the handler works outside the transaction and returns a Result with cards for the next buffers;
+3. complete in one transaction creates these cards and marks done. If the next buffer
+   is full (limit N trigger), the card is returned to the queue after a minute, the attempt is not spent.
 
-Сбой обработчика — повтор через 5, 10 минут, после трёх попыток — изолятор брака
-(`quarantined` + запись в `line.defects`). Брак, найденный проверкой (ОТК), — исключение
-`kanban.Defect`: карточка сразу уходит в изолятор. Раз в минуту воркер отмечает
-`expired` карточки старше `max_age` буфера и возвращает брошенные упавшим воркером
-(`in_progress` дольше 30 минут). Сбой одной карточки не останавливает воркер.
+Handler failure — retry after 5, 10 minutes, after three attempts — defect isolator
+(quarantined + a record in line.defects). A defect found by the check (QC) — the
+kanban.Defect exception: the card immediately goes to the isolator. Once a minute the worker marks
+expired cards older than the buffer's max_age and returns those abandoned by a crashed worker
+(in_progress longer than 30 minutes). A failure of one card does not stop the worker.
 
-Пока все обработчики — заглушки: карточка уходит в изолятор с `check_code = 'not_implemented'`.
-Чтобы реализовать цех, замените функцию для его буфера в `HANDLERS`.
+For now all handlers are stubs: the card goes to the isolator with check_code = 'not_implemented'.
+To implement a shop, replace the function for its buffer in HANDLERS.
 
-Healthcheck: воркер и бот обновляют файл сердцебиения, пока работают с базой. Без связи
-с базой дольше 15 минут контейнер становится `unhealthy`.
+Healthcheck: the worker and bot update the heartbeat file while they work with the database. Without a
+database connection for longer than 15 minutes, the container becomes unhealthy.
 
-## Тесты
+Tests
 
-Интеграционные, на настоящем PostgreSQL 16 (каждый прогон создаёт и удаляет свою базу):
+Integration, on a real PostgreSQL 16 (each run creates and drops its own database):
 
 ```sh
 docker run -d --name pgtest -e POSTGRES_PASSWORD=test -p 55432:5432 postgres:16-alpine
 TEST_DATABASE_URL=postgresql://postgres:test@localhost:55432/postgres make test-factory
 ```
 
-## Не входит в каркас
+Not included in the skeleton
 
-Логика цехов и бота, миграции схемы, резервные копии базы (пока — автоматические бэкапы
-хостинга), выгрузка рейтингов для сайта.
+Shop and bot logic, schema migrations, database backups (for now — automatic hosting
+backups), export of ratings for the website.
