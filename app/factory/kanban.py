@@ -1,12 +1,12 @@
-"""Канбан в PostgreSQL: взять карточку, закрыть, вернуть в очередь, отправить в изолятор.
+"""Kanban in PostgreSQL: claim a card, complete it, return it to the queue, send it to the isolator.
 
-Порядок работы воркера с карточкой:
-  1. claim()   — короткая транзакция: карточка становится in_progress (FOR UPDATE SKIP LOCKED);
-  2. обработка — вне транзакции (долгие обращения к API не держат блокировки);
-  3. complete() — одна транзакция: новые карточки в следующие буферы + done.
-     Если следующий буфер полон, карточка возвращается в очередь (тянущая система:
-     цех не производит больше, чем может принять потребитель).
-Останавливается деталь, а не линия: сбой одной карточки не останавливает воркер.
+Worker's order of operations with a card:
+  1. claim()   — short transaction: the card becomes in_progress (FOR UPDATE SKIP LOCKED);
+  2. processing — outside the transaction (long API calls do not hold locks);
+  3. complete() — one transaction: new cards into the next buffers + done.
+     If the next buffer is full, the card is returned to the queue (pull system:
+     a shop does not produce more than the consumer can accept).
+The part stops, not the line: a failure of one card does not stop the worker.
 """
 
 from __future__ import annotations
@@ -20,9 +20,9 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 MAX_ATTEMPTS = 3
-RETRY_BACKOFF = dt.timedelta(minutes=5)      # умножается на номер попытки
-FULL_BUFFER_DELAY = dt.timedelta(minutes=1)  # ждём, пока потребитель разберёт буфер
-STALE_AFTER = dt.timedelta(minutes=30)       # in_progress дольше — воркер умер
+RETRY_BACKOFF = dt.timedelta(minutes=5)      # multiplied by the attempt number
+FULL_BUFFER_DELAY = dt.timedelta(minutes=1)  # wait while the consumer drains the buffer
+STALE_AFTER = dt.timedelta(minutes=30)       # in_progress longer — the worker died
 
 
 @dataclass
@@ -36,7 +36,7 @@ class WorkItem:
 
 @dataclass
 class Card:
-    """Новая карточка в следующий буфер."""
+    """A new card into the next buffer."""
     buffer_code: str
     payload: dict
     priority: int = 0
@@ -49,7 +49,7 @@ class Result:
 
 
 class Defect(Exception):
-    """Брак, найденный проверкой (ОТК): карточка сразу уходит в изолятор."""
+    """A defect found by the check (QC): the card immediately goes to the isolator."""
 
     def __init__(self, check_code: str, details: dict | None = None):
         super().__init__(check_code)
@@ -102,7 +102,7 @@ def enqueue(conn: Connection, card: Card, parent_id: int | None = None) -> int:
 
 
 def complete(conn: Connection, item: WorkItem, result: Result) -> None:
-    """Дочерние карточки и done — атомарно. Полный буфер — карточка ждёт в очереди."""
+    """Child cards and done — atomically. Full buffer — the card waits in the queue."""
     try:
         with conn.transaction():
             for card in result.children:
@@ -132,7 +132,7 @@ def quarantine(conn: Connection, item_id: int, check_code: str, details: dict,
 
 
 def fail(conn: Connection, item: WorkItem, error: BaseException) -> str:
-    """Сбой обработки: повтор с паузой, после MAX_ATTEMPTS — изолятор. Возвращает итог."""
+    """Processing failure: retry with a delay, after MAX_ATTEMPTS — isolator. Returns the outcome."""
     details = {"error": type(error).__name__, "message": str(error)[:500], "attempts": item.attempts}
     if isinstance(error, Defect):
         quarantine(conn, item.id, error.check_code, {**details, **error.details})
@@ -150,7 +150,7 @@ def fail(conn: Connection, item: WorkItem, error: BaseException) -> str:
 
 
 def expire(conn: Connection, buffers: list[str]) -> int:
-    """Карточки старше max_age буфера — брак (протухший лид, устаревший мини-аудит)."""
+    """Cards older than the buffer's max_age — defect (stale lead, outdated mini-audit)."""
     with conn.transaction():
         rows = conn.execute(
             """WITH old AS (
@@ -166,7 +166,7 @@ def expire(conn: Connection, buffers: list[str]) -> int:
 
 
 def recover_stale(conn: Connection, buffers: list[str]) -> int:
-    """Карточки, брошенные упавшим воркером: назад в очередь или в изолятор."""
+    """Cards abandoned by a crashed worker: back to the queue or to the isolator."""
     with conn.transaction():
         stale = conn.execute(
             """SELECT id, attempts FROM line.work_items
