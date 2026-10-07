@@ -3,12 +3,12 @@
   "properties": {
     "query": {
       "type": "string",
-      "description": "Поисковый запрос или семантическая концепция для поиска в базе знаний."
+      "description": "Search query or semantic concept to search the knowledge base."
     },
     "category_filter": {
       "type": "string",
       "enum": ["All", "Projects", "Areas", "Resources", "Archives"],
-      "description": "Фильтр по конкретной категории PARA. Если не уверен, используй 'All'."
+      "description": "Filter by a specific PARA category. If unsure, use 'All'."
     }
   },
   "required": ["query"]
