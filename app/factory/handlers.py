@@ -1,11 +1,11 @@
-"""Обработчики буферов: код буфера -> функция(WorkItem) -> Result.
+"""Buffer handlers: buffer code -> function(WorkItem) -> Result.
 
-Пока цеха не реализованы, здесь заглушки. Заглушка не выбрасывает карточки:
-она отправляет их в изолятор с check_code='not_implemented', откуда их можно
-вернуть в очередь, когда появится настоящий обработчик.
-Обработчик не пишет в базу сам — он возвращает Result с новыми карточками,
-а kanban.complete() сохраняет их вместе с отметкой done в одной транзакции.
-Проверка результата (ОТК) — через исключение kanban.Defect.
+While the shops are not implemented, stubs live here. A stub does not discard cards:
+it sends them to the isolator with check_code='not_implemented', from where they can be
+returned to the queue when a real handler appears.
+A handler does not write to the database itself — it returns a Result with new cards,
+and kanban.complete() saves them together with the done mark in a single transaction.
+Result checking (QC) — via the kanban.Defect exception.
 """
 
 from __future__ import annotations
@@ -22,11 +22,11 @@ def not_implemented(item: WorkItem) -> Result:
 
 
 HANDLERS: dict[str, Handler] = {
-    # склад лидов -> цех 2: мини-аудит из среза замера категории -> mini_audit_store
+    # lead warehouse -> shop 2: mini-audit from a category measurement slice -> mini_audit_store
     "leads_store": not_implemented,
-    # склад мини-аудитов -> цех 3 (бот): отправка мини-аудита в Telegram
+    # mini-audit warehouse -> shop 3 (bot): sending the mini-audit to Telegram
     "mini_audit_store": not_implemented,
-    # очередь онбординга -> цех 5: первый замер подписчика в течение суток
+    # onboarding queue -> shop 5: first subscriber measurement within 24 hours
     "onboarding": not_implemented,
 }
 
