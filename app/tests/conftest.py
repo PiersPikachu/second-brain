@@ -1,9 +1,9 @@
-"""Интеграционные тесты на настоящем PostgreSQL 16.
+"""Integration tests on a real PostgreSQL 16.
 
-TEST_DATABASE_URL — суперпользователь тестового сервера, например:
+TEST_DATABASE_URL — superuser of the test server, for example:
   docker run -d --name pgtest -e POSTGRES_PASSWORD=test -p 55432:5432 postgres:16-alpine
   TEST_DATABASE_URL=postgresql://postgres:test@localhost:55432/postgres make test-factory
-Каждый прогон создаёт отдельную базу и удаляет её после тестов.
+Each run creates a separate database and drops it after the tests.
 """
 
 import os
@@ -21,7 +21,7 @@ sys.path.insert(0, str(APP))
 
 ADMIN_URL = os.environ.get("TEST_DATABASE_URL")
 if not ADMIN_URL:
-    pytest.skip("не задан TEST_DATABASE_URL", allow_module_level=True)
+    pytest.skip("TEST_DATABASE_URL is not set", allow_module_level=True)
 
 
 @pytest.fixture(scope="session")
