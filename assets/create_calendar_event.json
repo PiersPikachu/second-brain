@@ -3,19 +3,19 @@
   "properties": {
     "title": {
       "type": "string",
-      "description": "Краткое название события или задачи."
+      "description": "A short name for the event or task."
     },
     "description": {
       "type": "string",
-      "description": "Подробное описание или контекст."
+      "description": "Detailed description or context."
     },
     "startTime": {
       "type": "string",
-      "description": "Время начала в формате ISO 8601 (например, 2026-05-10T14:30:00Z)."
+      "description": "Start time in ISO 8601 format (e.g., 2026-05-10T14:30:00Z)."
     },
     "endTime": {
       "type": "string",
-      "description": "Время окончания в формате ISO 8601."
+      "description": "End time in ISO 8601 format."
     }
   },
   "required": ["title", "startTime"]
