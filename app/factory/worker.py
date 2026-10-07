@@ -1,8 +1,8 @@
-"""Воркер цеха: python -m factory.worker --workshop mini_audit
+"""Shop worker: python -m factory.worker --workshop mini_audit
 
-Тянет карточки из буферов своего цеха, обрабатывает, передаёт дальше.
-Раз в минуту убирает протухшие карточки и возвращает брошенные упавшими воркерами.
-SIGTERM: дорабатывает текущую карточку и выходит.
+Pulls cards from its shop's buffers, processes them, passes them on.
+Once a minute it removes expired cards and returns those abandoned by crashed workers.
+SIGTERM: finishes the current card and exits.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ class Worker:
         self._last_housekeeping = 0.0
 
     def stop(self, *_):
-        log.info("получен сигнал остановки, дорабатываю текущую карточку")
+        log.info("stop signal received, finishing the current card")
         self.stopping = True
 
     def housekeeping(self, conn, buffers) -> None:
@@ -44,10 +44,10 @@ class Worker:
         expired = kanban.expire(conn, buffers)
         stale = kanban.recover_stale(conn, buffers)
         if expired or stale:
-            log.info("просрочено: %d, возвращено брошенных: %d", expired, stale)
+            log.info("expired: %d, abandoned returned: %d", expired, stale)
 
     def step(self, conn, buffers) -> bool:
-        """Одна карточка. True — карточка была, False — буферы пусты."""
+        """One card. True — there was a card, False — buffers are empty."""
         self.housekeeping(conn, buffers)
         item = kanban.claim(conn, buffers, self.id)
         if item is None:
@@ -55,15 +55,15 @@ class Worker:
         try:
             result = handler_for(item.buffer_code)(item)
             kanban.complete(conn, item, result)
-            log.info("карточка %d (%s) готова, дальше: %d", item.id, item.buffer_code,
+            log.info("card %d (%s) done, onward: %d", item.id, item.buffer_code,
                      len(result.children))
         except kanban.BufferFull as e:
-            log.info("карточка %d ждёт: буфер %s полон", item.id, e)
+            log.info("card %d is waiting: buffer %s is full", item.id, e)
         except psycopg.OperationalError:
-            raise  # связь с базой — забота внешнего цикла; карточку вернёт recover_stale
-        except Exception as e:  # noqa: BLE001 — останавливается деталь, а не линия
+            raise  # database connection is the outer loop's concern; recover_stale will return the card
+        except Exception as e:  # noqa: BLE001 — the part stops, not the line
             outcome = kanban.fail(conn, item, e)
-            log.warning("карточка %d (%s): %s — %s", item.id, item.buffer_code, e, outcome)
+            log.warning("card %d (%s): %s — %s", item.id, item.buffer_code, e, outcome)
         return True
 
     def run(self) -> None:
@@ -74,18 +74,18 @@ class Worker:
                 with connect() as conn:
                     buffers = kanban.buffers_of(conn, self.workshop)
                     if not buffers:
-                        log.info("у цеха %s нет входных буферов: жду задач по расписанию", self.workshop)
+                        log.info("shop %s has no input buffers: waiting for scheduled tasks", self.workshop)
                     else:
-                        log.info("цех %s, буферы: %s", self.workshop, ", ".join(buffers))
+                        log.info("shop %s, buffers: %s", self.workshop, ", ".join(buffers))
                     while not self.stopping:
                         health.beat()
                         if not buffers or not self.step(conn, buffers):
                             time.sleep(self.poll * random.uniform(0.8, 1.2))
             except psycopg.OperationalError as e:
-                # Сердцебиение не обновляем: без базы воркер нездоров
-                log.error("нет связи с базой: %s; повтор через 10 с", e)
+                # We do not update the heartbeat: without the database the worker is unhealthy
+                log.error("no database connection: %s; retrying in 10 s", e)
                 time.sleep(10)
-        log.info("остановлен")
+        log.info("stopped")
 
 
 def main() -> None:
