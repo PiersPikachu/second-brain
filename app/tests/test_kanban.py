@@ -1,4 +1,4 @@
-"""Канбан: взять, закрыть, передать дальше, повторить, изолировать, просрочить."""
+"""Kanban: claim, complete, pass onward, retry, quarantine, expire."""
 
 import datetime as dt
 
@@ -41,7 +41,7 @@ def test_priority_and_schedule(worker_conn):
                 scheduled_for=dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1))
     assert kanban.claim(worker_conn, ["leads_store"], "w").id == high
     assert kanban.claim(worker_conn, ["leads_store"], "w").id == low
-    assert kanban.claim(worker_conn, ["leads_store"], "w") is None  # хейдзунка: ещё не время
+    assert kanban.claim(worker_conn, ["leads_store"], "w") is None  # heijunka: not yet time
     assert status(worker_conn, later) == "queued"
 
 
@@ -55,10 +55,10 @@ def test_full_downstream_buffer_returns_item(owner, worker_conn):
             kanban.complete(worker_conn, item, Result([Card("mini_audit_store", {})]))
         row = worker_conn.execute(
             "SELECT status, attempts, scheduled_for > now() FROM line.work_items WHERE id = %s", (a,)).fetchone()
-        assert row == ("queued", 0, True)  # ждёт, попытка не потрачена
+        assert row == ("queued", 0, True)  # waits, attempt not spent
         n = worker_conn.execute(
             "SELECT count(*) FROM line.work_items WHERE buffer_code = 'mini_audit_store'").fetchone()[0]
-        assert n == 1  # дочерняя карточка не создана
+        assert n == 1  # child card not created
     finally:
         owner.execute("UPDATE line.buffers SET card_limit = 100 WHERE code = 'mini_audit_store'")
 
