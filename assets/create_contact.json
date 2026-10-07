@@ -1,9 +1,9 @@
 {
   "type": "object",
   "properties": {
-    "name": { "type": "string", "description": "Имя и фамилия контакта." },
-    "phone": { "type": "string", "description": "Номер телефона." },
-    "email": { "type": "string", "description": "Email адрес." }
+    "name": { "type": "string", "description": "Contact's first and last name." },
+    "phone": { "type": "string", "description": "Phone number." },
+    "email": { "type": "string", "description": "Email address." }
   },
   "required": ["name"]
 }
