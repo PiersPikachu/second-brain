@@ -4,7 +4,7 @@
     "action": { 
       "type": "string", 
       "enum": ["toggle_music", "toggle_flashlight"],
-      "description": "Системное действие: переключить музыку (Play/Pause) или фонарик." 
+      "description": "System action: toggle music (Play/Pause) or flashlight." 
     }
   },
   "required": ["action"]
