@@ -1,8 +1,8 @@
 #!/bin/sh
-# Запускается образом postgres один раз, при создании базы (docker-entrypoint-initdb.d).
+# Run by the postgres image once, when the database is created (docker-entrypoint-initdb.d).
 set -eu
-: "${BOT_DB_PASSWORD:?не задан BOT_DB_PASSWORD}"
-: "${WORKER_DB_PASSWORD:?не задан WORKER_DB_PASSWORD}"
+: "${BOT_DB_PASSWORD:?BOT_DB_PASSWORD is not set}"
+: "${WORKER_DB_PASSWORD:?WORKER_DB_PASSWORD is not set}"
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f /factory-db/roles.sql
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
