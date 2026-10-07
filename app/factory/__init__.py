@@ -1,1 +1,1 @@
-"""GEO-аудит dark factory: воркеры цехов и Telegram-бот."""
+"""GEO audit dark factory: shop workers and Telegram bot."""
