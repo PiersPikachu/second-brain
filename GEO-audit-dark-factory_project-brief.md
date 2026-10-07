@@ -1,171 +1,179 @@
-# GEO-аудит для селлеров: dark factory
+GEO audit for sellers: dark factory
+ 
+Summary of project decisions. Document for the Claude Project knowledge base. Status: concept approved, technical implementation underway. Version 2 (23.09.2026): added self-learning, reinvestment rule, autonomous category selection, unified query sets.
+ 
+1. Essence of the service
+ 
+An automated service that measures and increases a seller’s product visibility in AI assistant answers (ChatGPT, Perplexity, Alisa, GigaChat, etc.). Evolution logic: SEO → marketplace promotion → promotion for AI agents (GEO).
+ 
+The main product metric is share in AI answers: in what percentage of answers to typical buyer queries the client’s brand is mentioned (weighted by position).
+ 
+2. Business model (result of the tournament of 55 templates)
+ 
+Tournament based on the book “Business Models: 55 Best Templates.” Criteria: automatability, speed to first money, margin and recurring revenue, protection from competitors (equal weights). Estimates are expert.
+ 
+Winning core (maximum points):
+• Freemium — free mini-audit as entry.
+• Cash machine — prepayment: full audit and monitoring paid upfront.
+• Subscription — monthly monitoring of share in AI answers.
+• Customer lock-in — measurement history stored by the service.
+• Data management — consolidated database of AI answers by category as the main barrier for competitors. 
+The final bundle added “No frills” and “Digitization” — these are execution style, not pillars. Tournament conclusion: more than 5 models — complexity eats the benefit.
+ 
+Product ladder (prices are hypotheses):
+• Mini-audit — free (10 queries, one metric). Built as a slice of the weekly category measurement, without separate API calls.
+• Full audit — one-time payment (50 queries, all models, gaps in sources, work plan).
+• Monitoring — subscription, price by number of SKUs/categories; annual plan with discount for prepayment.
+• Implementation — product card improvement per SKU; external content — through partners for commission. 
+Rejected at start: payment for share growth (noisy metric), agency retainer (manual labor).
+ 
+3. Strategy (backcasting)
+ 
+Goal in 12–18 months: standard for measuring AI visibility in several marketplace categories; clients come on their own, most pay upfront, measurement base is an insurmountable asset.
+• Months 9–12: public ratings “whom AI recommends”; expansion to new categories happens automatically according to the rules of section 10.
+• Months 5–8: retention, reports with dynamics, annual plans, upsells.
+• Months 2–4: debugging conversion from free audit to paid.
+• Month 1: auditor for one category; weekly measurement of two tourism subcategories from the first month (needed so mini-audits in the funnel are always fresh). 
+Rules: data is collected from day one and across the entire category; at start 2–3 categories densely, then the ceiling grows with revenue (section 10); prepayment is built into tariffs from the very beginning.
+ 
+4. Architecture of the auditor agent
+ 
+Two branches converge in scoring:
+• Product card branch: card parser → analysis of attribute completeness against the category top.
+• AI answers branch: query generator → model polling → mention extractor. 
+Query generator: ~50 queries of five types — general, constrained, comparative, problem, branded.
+• General, constrained, comparative, and problem — unified set per category, the same for all clients.
+• Branded — separate client set.
+• 10 mini-audit queries — fixed subset of the category set.
+• Sets are frozen; change = new version, old measurements are not rewritten. 
+Result: client and category measurements are directly comparable, each client measurement replenishes the shared base.
+ 
+Model polling: only models with web search; each query × 3 runs (answers are unstable).
+ 
+Extractor: cheap model with strict JSON schema — brands, products, positions, tone, sources; then mapping name variants to brands.
+ 
+Scoring (three numbers for the client): share in answers; gap with leader; gaps in sources.
+ 
+Report: one page — three numbers, top 3 fixes, details in attachment.
+ 
+Data: all raw material is stored (clients, queries, runs, answers, mentions, scores) to recalculate metrics. The extractor and scoring formula have versions.
+ 
+5. Dark factory: a line of 6 shops
+1. Lead reconnaissance — measurement of the entire category.
+2. Mini-audit — report for each seller.
+3. Funnel — Telegram bot (instead of mailing and correspondence).
+4. Sale and prepayment — offer, payment, receipt.
+5. Monitoring — measurements and reports by subscription.
+6. Retention and upsells — renewals, product card improvements. 
+Control loop: QC (output check), andon (exceptions), dispatch (line metrics).
+ 
+Principles: standard work of agents; error protection (result does not pass further without schema check); QC reconciles mentions with raw answers; the part stops, not the line.
+ 
+Andon without people (decision: 0 minutes per day):
+• AI “shift master” on a strong model handles complex cases.
+• Safe mode by default: standard polite answer; complaint → automatic refund; dubious report is not sent, measurement is repeated; discounts — refusal with reference to tariffs.
+• To the human — only an emergency signal in Telegram: bot blocking, legal claim, change in platform rules, irreparable model drift, approaching the self-employment limit.
+• Separately from andon — a monthly summary of decisions by category in Telegram, no response required. 
+Bottlenecks: dependence on model providers (need a backup); model drift (daily reference run as calibration).
+ 
+6. Toyota kanban on the line
+ 
+Two flows: acquisition (shops 1→4) and service (shops 5→6, pulled by the subscription calendar).
+ 
+Supermarket buffers: lead warehouse (measurement older than 2 weeks — defect), mini-audit warehouse (older than a week — do not send), onboarding queue (first measurement within 24 hours).
+ 
+Number of cards: N = D × L × (1 + α) / C, where D — demand per day, L — batch production time, α — safety stock 10–20%, C — batch size. Limit N is hardcoded in the database: a card cannot be placed in a full buffer.
+ 
+Since there are no people on the line, limits are determined by the advertising budget, aggregator API limits, and QC defect percentage.
+ 
+Heijunka: subscriber measurements evenly across days of the month; uniform advertising volume.
+ 
+Metrics: lead time, WIP in buffers, output; Little’s law: time = WIP / output.
+ 
+Visual dispatch board (e.g., Trello), real queues — in the database.
+ 
+7. Accepted decisions
+Question Decision
+Acquisition Own Telegram channel with automatic ratings + advertising in seller channels (selection via Telemetr); both roads lead to the bot. No personal messages.
+Andon 0 minutes per day, safe mode, emergency signals.
+Lawyer Only AI lawyer: primary sources (laws, Roskomnadzor recommendations), cross-check by two models, document versions, monthly monitoring of laws.
+Personal data Analytical database without PD; Telegram ID — in a separate pd schema of the same database, access only for the bot role, other shops see only an anonymized account id; payment data — with the payment service. Names of seller-sole proprietors (full name) are not saved by the parser — only brand and seller ID. Database — on a server in Russia.
+Platform Wildberries first; data schema is platform-independent. Entry to Ozon is decided by the system itself (section 10).
+Category Start: sports and tourism (tourist equipment), two subcategories with weekly measurement; priority — where AI answers are less concentrated on 2–3 brands. Further category selection — autonomous (section 10).
+Models Aggregator AITUNNEL (rubles): Perplexity sonar line with search. Check: search versions of GPT, YandexGPT/GigaChat, request limits.
+Parsing Own parser of public WB data (mini-audit, category measurements) + official Seller API with client token (paying clients) + Russian analytics service in reserve.
+Sales channel Sellers directly; agencies (white-label) later. The database immediately supports many stores per account.
+Legal form Self-employment at start; payment service with automatic receipts to “My Tax”; tax on all revenue (expenses are not deducted); signal to switch to sole proprietorship when approaching the limit.
+Pilot No pilot. Diagnostics is sold first, not growth; starting price with automatic refund; cases from shared category measurements.
+Accounting Online service, without employees.
+Query sets Unified category set + client branded queries; mini-audit — subset of the category set.
+Reinvestment 60% of net result — to the development fund (section 9).
+Code changes Auto-deploy: tests, canary release, auto-rollback on defect increase.
 
-Сводка решений проекта. Документ для базы знаний Claude Project.
-Статус: концепция утверждена, идёт техническая реализация. Версия 2 (23.09.2026): добавлены самообучение, правило реинвестирования, автономный выбор категорий, единые наборы запросов.
-
----
-
-## 1. Суть сервиса
-
-Автоматизированный сервис, который измеряет и повышает видимость товаров селлера в ответах ИИ-ассистентов (ChatGPT, Perplexity, Алиса, GigaChat и др.). Логика эволюции: SEO → продвижение на маркетплейсах → продвижение для ИИ-агентов (GEO).
-
-Главная метрика продукта — **доля в ответах ИИ**: в каком проценте ответов на типовые запросы покупателей упоминается бренд клиента (с весом по позиции).
-
-## 2. Бизнес-модель (итог турнира 55 шаблонов)
-
-Турнир по книге «Бизнес-модели: 55 лучших шаблонов». Критерии: автоматизируемость, скорость до первых денег, маржа и повторная выручка, защита от конкурентов (веса равные). Оценки экспертные.
-
-**Ядро-победитель (максимум баллов):**
-- **Freemium** — бесплатный мини-аудит как вход.
-- **Банкомат** — предоплата: полный аудит и мониторинг оплачиваются вперёд.
-- **Подписка** — ежемесячный мониторинг доли в ответах ИИ.
-- **Привязывание клиента** — история замеров хранится у сервиса.
-- **Управление данными** — сводная база ответов ИИ по категориям как главный барьер для конкурентов.
-
-Финальная связка добавила «Без излишеств» и «Оцифровывание» — это стиль исполнения, а не опоры. Вывод турнира: больше 5 моделей — сложность съедает выгоду.
-
-**Лестница продуктов (цены — гипотезы):**
-1. Мини-аудит — бесплатно (10 запросов, одна метрика). Строится как срез еженедельного замера категории, без отдельных обращений к API.
-2. Полный аудит — разовый платёж (50 запросов, все модели, пробелы в источниках, план работ).
-3. Мониторинг — подписка, цена по числу SKU/категорий; годовой тариф со скидкой за предоплату.
-4. Внедрение — доработка карточек за SKU; внешний контент — через партнёров за комиссию.
-
-**Отказались на старте:** оплата за рост доли (шумная метрика), агентский ретейнер (ручной труд).
-
-## 3. Стратегия (бэккастинг)
-
-**Цель через 12–18 месяцев:** стандарт измерения видимости в ИИ в нескольких категориях маркетплейсов; клиенты приходят сами, большинство платит вперёд, база замеров — непреодолимый актив.
-
-- **Месяцы 9–12:** публичные рейтинги «кого рекомендует ИИ»; расширение на новые категории идёт автоматически по правилам раздела 10.
-- **Месяцы 5–8:** удержание, отчёты с динамикой, годовые тарифы, допродажи.
-- **Месяцы 2–4:** отладка конверсии бесплатного аудита в платный.
-- **Месяц 1:** аудитор для одной категории; **еженедельный замер двух подкатегорий туризма с первого месяца** (нужен, чтобы мини-аудиты в воронке всегда были свежими).
-
-**Правила:** данные собираются с первого дня и по всей категории; на старте 2–3 категории плотно, дальше потолок растёт с выручкой (раздел 10); предоплата встроена в тарифы с самого начала.
-
-## 4. Архитектура агента-аудитора
-
-Две ветки сходятся в скоринге:
-- **Ветка карточек:** парсер карточек → анализ заполненности атрибутов против топа категории.
-- **Ветка ответов ИИ:** генератор запросов → опрос моделей → экстрактор упоминаний.
-
-**Генератор запросов:** ~50 запросов пяти типов — общие, с ограничениями, сравнительные, проблемные, брендовые.
-- Общие, с ограничениями, сравнительные и проблемные — **единый набор на категорию**, одинаковый для всех клиентов.
-- Брендовые — отдельный набор клиента.
-- 10 запросов мини-аудита — фиксированное подмножество набора категории.
-- Наборы замораживаются; изменение = новая версия, старые замеры не переписываются.
-
-Итог: замеры клиента и категории прямо сравнимы, каждый замер клиента пополняет общую базу.
-
-**Опрос моделей:** только модели с веб-поиском; каждый запрос × 3 прогона (ответы нестабильны).
-
-**Экстрактор:** дешёвая модель со строгой JSON-схемой — бренды, товары, позиции, тон, источники; затем сведение вариантов названий к брендам.
-
-**Скоринг (три цифры для клиента):** доля в ответах; разрыв с лидером; пробелы в источниках.
-
-**Отчёт:** одна страница — три цифры, топ-3 исправления, детали во вложении.
-
-**Данные:** хранится всё сырьё (клиенты, запросы, прогоны, ответы, упоминания, оценки), чтобы пересчитывать метрики. У экстрактора и формулы скоринга — версии.
-
-## 5. Dark factory: линия из 6 цехов
-
-1. Разведка лидов — замер всей категории.
-2. Мини-аудит — отчёт под каждого селлера.
-3. Воронка — Telegram-бот (вместо рассылки и переписки).
-4. Продажа и предоплата — оферта, оплата, чек.
-5. Мониторинг — замеры и отчёты по подписке.
-6. Удержание и допродажи — продления, доработки карточек.
-
-**Контур управления:** ОТК (проверка на выходе), андон (исключения), диспетчерская (метрики линии).
-
-**Принципы:** стандартная работа агентов; защита от ошибок (результат не проходит дальше без проверки по схеме); ОТК сверяет упоминания с сырыми ответами; останавливается деталь, а не линия.
-
-**Андон без людей (решение: 0 минут в день):**
-- ИИ-«мастер смены» на сильной модели разбирает сложные случаи.
-- Безопасный режим по умолчанию: стандартный вежливый ответ; претензия → автоматический возврат денег; сомнительный отчёт не отправляется, замер повторяется; скидки — отказ со ссылкой на тарифы.
-- Человеку — только аварийный сигнал в Telegram: блокировка бота, юридическая претензия, смена правил площадок, неустранимый дрейф моделей, приближение к лимиту самозанятости.
-- Отдельно от андона — ежемесячная сводка решений по категориям в Telegram, ответа не требует.
-
-**Узкие места:** зависимость от поставщиков моделей (нужен запасной); дрейф моделей (ежедневный эталонный прогон как калибровка).
-
-## 6. Канбан Тойоты на линии
-
-- Два потока: привлечение (цеха 1→4) и обслуживание (цеха 5→6, тянет календарь подписок).
-- Супермаркеты-буферы: склад лидов (замер старше 2 недель — брак), склад мини-аудитов (старше недели — не отправлять), очередь онбординга (первый замер в течение суток).
-- Число карточек: **N = D × L × (1 + α) / C**, где D — спрос в день, L — время производства партии, α — страховой запас 10–20%, C — размер партии. Лимит N зашит в базу: карточку нельзя положить в полный буфер.
-- Так как людей на линии нет, лимиты определяются рекламным бюджетом, лимитами API агрегатора и процентом брака ОТК.
-- Хейдзунка: замеры подписчиков равномерно по дням месяца; равномерный объём рекламы.
-- Метрики: время прохождения, WIP в буферах, выход; закон Литтла: время = WIP / выход.
-- Визуальная доска диспетчерской (например, Trello), реальные очереди — в базе данных.
-
-## 7. Принятые решения
-
-| Вопрос | Решение |
-|---|---|
-| Привлечение | Свой Telegram-канал с автоматическими рейтингами + реклама в каналах селлеров (подбор через Telemetr); обе дороги ведут в бота. Без личных сообщений. |
-| Андон | 0 минут в день, безопасный режим, аварийные сигналы. |
-| Юрист | Только ИИ-юрист: первоисточники (законы, рекомендации РКН), перекрёстная проверка двумя моделями, версии документов, ежемесячный мониторинг законов. |
-| Персональные данные | Аналитическая база без ПДн; Telegram ID — в отдельной схеме `pd` той же базы, доступ только у роли бота, остальные цеха видят лишь обезличенный id аккаунта; платёжные данные — у платёжного сервиса. Названия продавцов-ИП (ФИО) парсером не сохраняются — только бренд и ID продавца. База — на сервере в РФ. |
-| Площадка | Wildberries первым; схема данных независима от площадки. Выход на Ozon решает система сама (раздел 10). |
-| Категория | Старт: спорт и туризм (туристическое снаряжение), две подкатегории с еженедельным замером; приоритет — где ответы ИИ меньше сконцентрированы на 2–3 брендах. Дальнейший выбор категорий — автономный (раздел 10). |
-| Модели | Агрегатор AITUNNEL (рубли): линейка Perplexity sonar с поиском. Проверить: поисковые версии GPT, YandexGPT/GigaChat, лимиты запросов. |
-| Парсинг | Собственный парсер публичных данных WB (мини-аудит, замеры категорий) + официальный Seller API с токеном клиента (платящие клиенты) + российский сервис аналитики в резерве. |
-| Канал продаж | Селлеры напрямую; агентства (white-label) позже. База сразу поддерживает много магазинов на один аккаунт. |
-| Юрформа | Самозанятость на старте; платёжный сервис с автоматическими чеками в «Мой налог»; налог со всей выручки (расходы не вычитаются); сигнал о переходе на ИП при приближении к лимиту. |
-| Пилот | Без пилота. Сначала продаётся диагностика, а не рост; стартовая цена с автоматическим возвратом; кейсы из общих замеров категории. |
-| Бухгалтерия | Онлайн-сервис, без сотрудников. |
-| Наборы запросов | Единый набор категории + брендовые запросы клиента; мини-аудит — подмножество набора категории. |
-| Реинвестирование | 60% чистого результата — в фонд развития (раздел 9). |
-| Изменения кода | Автовыкатка: тесты, канареечный запуск, автооткат при росте брака. |
-
-## 8. Самообучение и саморазвитие
-
-Система развивается сама, но по уровням:
-
-- **Полная автономия:** словарь брендов; лимиты N буферов по фактическим D и L; тексты бота, порядок экранов, время отправки, распределение рекламы (A/B по конверсии); новые правила безопасного режима из разборов мастера смены; модель выбора категорий.
-- **Через версии и теневой прогон (PDCA):** промпты экстрактора, генератор запросов, формула скоринга, выбор моделей. Новая версия работает параллельно со старой, ОТК сравнивает на тех же сырых ответах, в работу — только если лучше. Старые замеры не переписываются.
-- **Не меняется само:** логика денег и возвратов, доли 60% и 15%, срок разгона, запретный список категорий, доступ к ПДн, оферта и политика (только через цифрового юриста), замороженные наборы запросов клиентов, обязательства по оплаченным подпискам.
-- **Код:** автовыкатка с тестами, канареечным запуском и автооткатом.
-
-## 9. Финансы: реинвестирование
-
-- **Чистый результат = выручка − возвраты − налог − операционные расходы.** 60% — в фонд развития, 40% — владельцу.
-- Операционные расходы: API, сервер, комиссия платёжного сервиса, замеры действующих категорий.
-- Из фонда развития: реклама, разведка и разгон новых категорий, запасной поставщик моделей, выход на новые площадки.
-- Закрытие периода — раз в месяц (расходы на API известны по итогам месяца).
-- Тратить можно только накопленный фонд; при отрицательном чистом результате в фонд ничего не идёт.
-- Стартовая реклама — начальным взносом владельца в фонд.
-- Ограничители: лимит на один эксперимент; стоп-лосс по стоимости клиента; сигнал о лимите самозанятости.
-
-## 10. Автономный выбор категорий
-
-- **Цель:** чистый результат по категории при минимуме на данные — **не меньше 15% фонда развития** на разведку (замеры категорий-кандидатов).
-- **Иерархия:** категории и подкатегории; система сама ищет, оценивает и открывает.
-- **Площадки:** WB и Ozon; выход на Ozon (новый парсер, Ozon Seller API) решает система.
-- **Запретный список:** лекарства, БАДы, алкоголь, табак, 18+.
-- **Потолок категорий в продаже:** на старте 2–3, дальше растёт. Новая категория открывается, только если одновременно:
-  1. фонд развития покрывает весь 3-месячный разгон — после резерва рекламы действующих окупаемых категорий;
-  2. все текущие категории вне разгона окупаются.
-- **Стоимость разгона:** первая оценка — по стартовому бюджету рекламы и замеров, затем уточняется по факту предыдущих разгонов.
-- **Разгон:** 3 месяца. Не окупилась — закрывается полностью: реклама, продажи и еженедельный замер прекращаются. Оплаченный мониторинг подписчиков продолжается до конца срока; сырые данные сохраняются; позже категория может снова стать кандидатом.
-- **Самоанализ:** журнал решений — прогноз и основания при решении, факт после разгона, расхождение идёт в обучение модели выбора. Пауз при серии ошибок нет: потери ограничены фондом развития.
-- **Отчётность владельцу:** ежемесячная сводка решений в Telegram без ответа.
-
-## 11. Инфраструктура
-
-- **Сервер:** один российский VPS (рекомендован Timeweb Cloud; альтернатива — Selectel). Ubuntu 24.04, 2 vCPU, 4 ГБ RAM, 40–60 ГБ NVMe, Москва или Санкт-Петербург, автоматические бэкапы.
-- **Настройка:** скрипт `setup_server.sh` — обновление, пользователь `factory`, вход только по SSH-ключу, файрвол, fail2ban, swap, Docker, проверка доступов к Telegram, агрегатору и парсеру.
-- **Стек:** Python, PostgreSQL, Docker Compose. Канбан-очереди — в PostgreSQL (`FOR UPDATE SKIP LOCKED`), без отдельного брокера.
-- **База данных:** `schema_v0_1.sql` — схемы `core` (замеры без ПДн), `line` (канбан, изолятор брака, андон), `billing` (тарифы, платежи, фонды), `growth` (категории, журнал решений), `pd` (только Telegram ID, доступ только у роли бота).
-- **Сайт (утверждено):** минимальный статический сайт на том же сервере — оферта и политика ПДн, требования платёжного сервиса, публичные рейтинги как источник для ИИ с поиском. Генерируется из базы как готовый HTML (контент доступен ИИ-краулерам без выполнения JavaScript), анимации — только поверх, через CSS. Обслуживания не требует.
-- **Секреты** (ключи API, токен бота) — только в файле настроек на сервере, не в чатах.
-
-## 12. Следующие шаги
-
-1. Проверить в панели AITUNNEL: поисковые версии GPT, российские модели, лимиты.
-2. Заказать сервер, запустить `setup_server.sh`, получить результаты проверки доступов.
-3. ~~Схема базы данных~~ — черновик v0.1 готов; доработать по итогам первого цеха.
-4. Docker-конфигурация: база, бот, воркеры цехов одной командой.
-5. Первый цех: парсер WB + генератор запросов + опрос моделей для двух подкатегорий туризма, еженедельно.
-6. Telegram-бот как входная дверь линии.
-7. Цифровой юрист: оферта, политика ПДн.
+ 
+8. Self-learning and self-development
+ 
+The system develops itself, but by levels:
+• Full autonomy: brand dictionary; buffer limits N based on actual D and L; bot texts, screen order, sending time, ad distribution (A/B by conversion); new safe mode rules from shift master analyses; category selection model.
+• Through versions and shadow run (PDCA): extractor prompts, query generator, scoring formula, model selection. The new version works in parallel with the old, QC compares on the same raw answers, into production only if better. Old measurements are not rewritten.
+• Does not change itself: money and refund logic, shares 60% and 15%, ramp-up period, forbidden category list, access to PD, offer and policy (only through the digital lawyer), frozen client query sets, obligations on paid subscriptions.
+• Code: auto-deploy with tests, canary release, and auto-rollback. 
+9. Finance: reinvestment
+ 
+Net result = revenue − refunds − tax − operating expenses. 60% — to the development fund, 40% — to the owner.
+ 
+Operating expenses: API, server, payment service commission, measurements of existing categories.
+ 
+From the development fund: advertising, reconnaissance and ramp-up of new categories, backup model provider, entry to new platforms.
+ 
+Period closing — once a month (API expenses are known by the end of the month).
+ 
+Only the accumulated fund can be spent; if net result is negative, nothing goes to the fund.
+ 
+Starting advertising — by the owner’s initial contribution to the fund.
+ 
+Limiters: limit per experiment; stop-loss on customer cost; signal on the self-employment limit.
+ 
+10. Autonomous category selection
+ 
+Goal: net result per category with minimum data — not less than 15% of the development fund for reconnaissance (measurements of candidate categories).
+ 
+Hierarchy: categories and subcategories; the system searches, evaluates, and opens itself.
+ 
+Platforms: WB and Ozon; entry to Ozon (new parser, Ozon Seller API) is decided by the system.
+ 
+Forbidden list: medicines, supplements, alcohol, tobacco, 18+.
+ 
+Ceiling of categories on sale: at start 2–3, then grows. A new category opens only if simultaneously:
+• the development fund covers the entire 3-month ramp-up — after the advertising reserve of existing profitable categories;
+• all current categories outside ramp-up are profitable. 
+Ramp-up cost: first estimate — by the starting advertising and measurement budget, then refined by actual previous ramp-ups.
+ 
+Ramp-up: 3 months. If not profitable — closed completely: advertising, sales, and weekly measurement stop. Paid subscriber monitoring continues until the end of the term; raw data is saved; later the category may become a candidate again.
+ 
+Self-analysis: decision journal — forecast and grounds when deciding, actual after ramp-up, discrepancy goes to training the selection model. No pauses after a series of errors: losses are limited by the development fund.
+ 
+Reporting to the owner: monthly summary of decisions in Telegram without response.
+ 
+11. Infrastructure
+ 
+Server: one Russian VPS (recommended Timeweb Cloud; alternative — Selectel). Ubuntu 24.04, 2 vCPU, 4 GB RAM, 40–60 GB NVMe, Moscow or St. Petersburg, automatic backups.
+ 
+Setup: setup_server.sh script — update, factory user, SSH-key-only login, firewall, fail2ban, swap, Docker, check access to Telegram, aggregator, and parser.
+ 
+Stack: Python, PostgreSQL, Docker Compose. Kanban queues — in PostgreSQL (FOR UPDATE SKIP LOCKED), without a separate broker.
+ 
+Database: schema_v0_1.sql — schemas core (measurements without PD), line (kanban, defect isolator, andon), billing (tariffs, payments, funds), growth (categories, decision journal), pd (only Telegram ID, access only for the bot role).
+ 
+Website (approved): minimal static website on the same server — offer and PD policy, payment service requirements, public ratings as a source for AI with search. Generated from the database as ready HTML (content available to AI crawlers without JavaScript execution), animations — only on top, via CSS. No maintenance required.
+ 
+Secrets (API keys, bot token) — only in the settings file on the server, not in chats.
+ 
+12. Next steps
+• Check in the AITUNNEL panel: search versions of GPT, Russian models, limits.
+• Order server, run setup_server.sh, get access check results.
+• Database schema — draft v0.1 ready; refine based on the results of the first shop.
+• Docker configuration: database, bot, shop workers with one command.
+• First shop: WB parser + query generator + model polling for two tourism subcategories, weekly.
+• Telegram bot as the entrance door of the line.
+• Digital lawyer: offer, PD policy.
