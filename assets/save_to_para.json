@@ -4,18 +4,18 @@
     "category": {
       "type": "string",
       "enum": ["Projects", "Areas", "Resources", "Archives"],
-      "description": "Категория PARA для сохранения."
+      "description": "PARA category for saving."
     },
     "content": {
       "type": "string",
-      "description": "Синтезированный текст заметки, задачи или извлеченная информация."
+      "description": "Synthesized text of the note, task, or extracted information."
     },
     "tags": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Список тегов для последующего векторного поиска."
+      "description": "List of tags for subsequent vector search."
     }
   },
   "required": ["category", "content"]
