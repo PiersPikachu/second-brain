@@ -1,8 +1,8 @@
-"""Telegram-бот (цех 3, воронка) — пока заглушка.
+"""Telegram bot (shop 3, funnel) — currently a stub.
 
-Проверяет, что у него есть всё нужное для работы: токен принят Telegram,
-доступ к схеме pd есть. Затем ждёт, поддерживая сердцебиение.
-Настоящий бот заменит run(); он же будет разбирать буфер mini_audit_store.
+Checks that it has everything needed to work: the token is accepted by Telegram,
+access to the pd schema exists. Then it waits while maintaining a heartbeat.
+The real bot will replace run(); it will also process the mini_audit_store buffer.
 """
 
 from __future__ import annotations
@@ -33,20 +33,20 @@ def telegram_me(token: str) -> str:
     with urllib.request.urlopen(f"https://api.telegram.org/bot{token}/getMe", timeout=15) as r:
         data = json.load(r)
     if not data.get("ok"):
-        raise RuntimeError(data.get("description", "Telegram отказал"))
+        raise RuntimeError(data.get("description", "Telegram refused"))
     return data["result"]["username"]
 
 
 def self_check(token: str) -> None:
     with connect() as conn:
         n = conn.execute("SELECT count(*) FROM pd.telegram_links").fetchone()[0]
-    log.info("доступ к pd есть, согласий: %d", n)
+    log.info("access to pd confirmed, consents: %d", n)
     try:
-        log.info("Telegram принял токен: @%s", telegram_me(token))
+        log.info("Telegram accepted the token: @%s", telegram_me(token))
     except urllib.error.HTTPError as e:
-        log.error("Telegram отклонил токен: HTTP %s", e.code)  # сам токен в лог не пишем
+        log.error("Telegram rejected the token: HTTP %s", e.code)  # we do not log the token itself
     except (urllib.error.URLError, TimeoutError, RuntimeError) as e:
-        log.error("Telegram недоступен: %s", e)
+        log.error("Telegram is unavailable: %s", e)
 
 
 def run() -> None:
@@ -54,16 +54,16 @@ def run() -> None:
     signal.signal(signal.SIGINT, stop)
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     if not token:
-        raise SystemExit("не задан TELEGRAM_BOT_TOKEN")
+        raise SystemExit("TELEGRAM_BOT_TOKEN is not set")
     checked = False
     while running:
         if not checked:
             try:
                 self_check(token)
                 checked = True
-                log.info("заглушка бота: логика воронки ещё не реализована")
+                log.info("bot stub: funnel logic is not implemented yet")
             except psycopg.OperationalError as e:
-                log.error("нет связи с базой: %s", e)  # сердцебиения нет — бот нездоров
+                log.error("no connection to the database: %s", e)  # no heartbeats — bot is unhealthy
         if checked:
             health.beat()
         time.sleep(10)
