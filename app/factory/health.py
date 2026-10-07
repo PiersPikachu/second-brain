@@ -1,4 +1,4 @@
-"""Healthcheck для Docker: процесс жив, если давно обновлял файл сердцебиения."""
+"""Healthcheck for Docker: the process is alive if it has updated the heartbeat file recently."""
 
 import os
 import sys
@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 HEARTBEAT = Path(os.environ.get("HEARTBEAT_FILE", "/tmp/heartbeat"))
-MAX_AGE = int(os.environ.get("HEALTH_MAX_AGE", "900"))  # дольше самой долгой обработки карточки
+MAX_AGE = int(os.environ.get("HEALTH_MAX_AGE", "900"))  # longer than the longest card processing
 
 
 def beat() -> None:
@@ -17,10 +17,10 @@ def main() -> int:
     try:
         age = time.time() - HEARTBEAT.stat().st_mtime
     except FileNotFoundError:
-        print("нет сердцебиения")
+        print("no heartbeat")
         return 1
     if age > MAX_AGE:
-        print(f"сердцебиение {age:.0f} с назад")
+        print(f"heartbeat was {age:.0f} s ago")
         return 1
     return 0
 
